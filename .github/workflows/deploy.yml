@@ -1,0 +1,36 @@
+name: Key Vault Secrets Integration
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write   # Required for OIDC authentication
+  contents: read
+
+jobs:
+  fetch-secrets-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch Secrets from Azure Key Vault
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: 'cicd-demo-kv-123'
+          secrets: 'DOCKER-REGISTRY-PASSWORD, DB-CONNECTION-STRING'
+        id: kvSecretsStep
+
+      - name: Run Build / Deployment Step
+        run: |
+          echo "Successfully retrieved secrets from Azure Key Vault."
+          # Secrets are automatically masked in build output:
+          echo "Connecting using string: ${{ steps.kvSecretsStep.outputs.DB-CONNECTION-STRING }}"
